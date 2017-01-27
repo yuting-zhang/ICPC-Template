@@ -1,0 +1,902 @@
+\documentclass[letterpaper]{article}
+\usepackage{listings}
+\usepackage{color}
+\usepackage[left=1.2in,right=1.2in,top=1.2in,bottom=1.2in]{geometry}
+\usepackage{titling}
+\setlength{\droptitle}{2in}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+		language=C++,
+		aboveskip=3mm,
+		belowskip=3mm,
+		showstringspaces=false,
+		columns=flexible,
+		basicstyle={\small\ttfamily},
+		numbers=none,
+		%numberstyle=\tiny\color{gray},
+		%keywordstyle=\color{dkgreen},
+		commentstyle=\color{mauve},
+		breaklines=true,
+		breakatwhitespace=true,
+		tabsize=3
+}
+
+\title{ICPC Algorithm Compilation}
+\date{\today}
+\author{Yuting Zhang}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+\newpage
+\pagestyle{plain}
+\tableofcontents
+\setcounter{page}{1}
+\pagenumbering{roman}
+\newpage
+
+\setcounter{page}{1}
+\pagenumbering{arabic}
+\section{Data Structures}
+\subsection{Bitmasks}
+\begin{lstlisting}
+#define isOn(S, j) (S & (1 << j))
+#define setBit(S, j) (S |= (1 << j))
+#define clearBit(S, j) (S &= ~(1 << j))
+#define toggleBit(S, j) (S ^= (1 << j))
+#define lowBit(S) (S & (-S))
+#define setAll(S, n) (S = (1 << n) - 1)
+
+#define modulo(S, N) ((S) & (N - 1))   // returns S % N, where N is a power of 2
+#define isPowerOfTwo(S) (!(S & (S - 1)))
+#define nearestPowerOfTwo(S) ((int)pow(2.0, (int)((log((double)S) / log(2.0)) + 0.5)))
+#define turnOffLastBit(S) ((S) & (S - 1))
+#define turnOnLastZero(S) ((S) | (S + 1))
+#define turnOffLastConsecutiveBits(S) ((S) & (S + 1))
+#define turnOnLastConsecutiveZeroes(S) ((S) | (S - 1))
+\end{lstlisting}
+
+\subsection{Union-Find Disjoint Sets}
+\begin{lstlisting}
+class DisjointSets{
+public:
+	void addelements(int num){
+		while (num--)
+			s.push_back(-1);
+	}
+	int find(int elem) {
+		return s[elem] < 0 ? elem : s[elem] = find(s[elem]); 
+	}
+
+	void setunion(int a, int b) {
+		int root1 = find(a), root2 = find(b);
+		int newSize = s[root1] + s[root2];
+		if (s[root1] <= s[root2]){
+			s[root2] = root1;
+			s[root1] = newSize;
+		}
+		else{
+			s[root1] = root2;
+			s[root2] = newSize;
+		}
+	}
+
+private:
+    std::vector<int> s;
+};
+\end{lstlisting}
+\newpage
+
+\subsection{Segment Tree}
+\begin{lstlisting}
+class SegmentTree {         // the segment tree is stored like a heap array
+private: vi st, A;            // recall that vi is: typedef vector<int> vi;
+  int n;
+  int left (int p) { return p << 1; }     // same as binary heap operations
+  int right(int p) { return (p << 1) + 1; }
+
+  void build(int p, int L, int R) {                           // O(n log n)
+    if (L == R)                            // as L == R, either one is fine
+      st[p] = L;                                         // store the index
+    else {                                // recursively compute the values
+      build(left(p), L, (L + R) / 2);
+      build(right(p), (L + R) / 2 + 1, R);
+      int p1 = st[left(p)], p2 = st[right(p)];
+      st[p] = (A[p1] <= A[p2]) ? p1 : p2;
+  } }
+
+  int rmq(int p, int L, int R, int i, int j) {                  // O(log n)
+    if (i > R || j < L) return -1;   // current segment outside query range
+    if (L >= i && R <= j) return st[p];               // inside query range
+
+     // compute the min position in the left and right part of the interval
+    int p1 = rmq(left(p), L, (L+R) / 2, i, j);
+    int p2 = rmq(right(p), (L+R) / 2 + 1, R, i, j);
+    if (p1 == -1) return p2;   // if we try to access segment outside query
+    if (p2 == -1) return p1;                               // same as above
+    return (A[p1] <= A[p2]) ? p1 : p2; }          // as as in build routine
+
+  int update_point(int p, int L, int R, int idx, int new_value) {
+    // this update code is still preliminary, i == j
+    // must be able to update range in the future!
+    int i = idx, j = idx;
+
+    // if the current interval does not intersect 
+    // the update interval, return this st node value!
+    if (i > R || j < L)
+      return st[p];
+
+    // if the current interval is included in the update range,
+    // update that st[node]
+    if (L == i && R == j) {
+      A[i] = new_value; // update the underlying array
+      return st[p] = L; // this index
+    }
+
+    // compute the minimum pition in the 
+    // left and right part of the interval
+    int p1, p2;
+    p1 = update_point(left(p), L, (L + R) / 2, idx, new_value);
+    p2 = update_point(right(p), (L + R) / 2 + 1, R, idx, new_value);
+
+    // return the pition where the overall minimum is
+    return st[p] = (A[p1] <= A[p2]) ? p1 : p2;
+  }
+
+public:
+	SegmentTree(const vi &_A) {
+		A = _A; n = (int)A.size();
+		st.assign(4 * n, 0);
+		build(1, 0, n - 1);
+	}
+	int rmq(int i, int j) {return rmq(1, 0, n - 1, i, j);}
+	void update_point(int idx, int val) { update_point(1, 0, n - 1, idx, val);}
+};
+\end{lstlisting}
+
+\subsection{Fenwick Tree}
+\begin{lstlisting}
+#define LSOne(S) (S & (-S))
+
+class FenwickTree {
+private:
+  vi ft;
+
+public:
+  FenwickTree() {}
+  // initialization: n + 1 zeroes, ignore index 0
+  FenwickTree(int n) { ft.assign(n + 1, 0); }
+
+  int rsq(int b) {                                     // returns RSQ(1, b)
+    int sum = 0; for (; b; b -= LSOne(b)) sum += ft[b];
+    return sum; }
+
+  int rsq(int a, int b) {                              // returns RSQ(a, b)
+    return rsq(b) - (a == 1 ? 0 : rsq(a - 1)); }
+
+  // adjusts value of the k-th element by v (v can be +ve/inc or -ve/dec)
+  void adjust(int k, int v) {                    // note: n = ft.size() - 1
+    for (; k < (int)ft.size(); k += LSOne(k)) ft[k] += v; }
+};
+\end{lstlisting}
+
+\subsection{Treap}
+\begin{lstlisting}
+#include <iostream>
+#include <cstdio>
+#include <memory>
+#include <vector>
+#include <cstdlib>
+#include <ctime>
+
+using namespace std;
+
+template<typename T>
+class treap{
+public:
+    treap(){
+        srand(time(0));
+        root = nullptr;
+    }
+
+    void insert(const T& elem){
+        insert(root, elem);    
+    }
+
+    void remove(const T& elem){
+        remove(root, elem);
+    }
+    
+private:
+    struct node_t{
+        T elem;
+        shared_ptr<node_t> left, right;
+        int priority;
+    };
+
+    shared_ptr<node_t> root;
+
+    shared_ptr<node_t> rotateLeft(shared_ptr<node_t> node){
+        shared_ptr<node_t> right = node->right, rightLeft = right->left;
+        right->left = node;
+        node->right = rightLeft;
+        return right;
+    }
+
+    shared_ptr<node_t> rotateRight(shared_ptr<node_t> node){
+        shared_ptr<node_t> left = node->left, leftRight = left->right;
+        left->right = node;
+        node->left = leftRight;
+        return left;
+    }
+
+    void insert(shared_ptr<node_t>& node, const T& elem){
+        if (node == nullptr){
+            node = make_shared<node_t>();
+            node->elem = elem;
+            node->left = node->right = nullptr;
+            node->priority = rand();
+            return;
+        }
+        // We do not allow multiple keys with the same value
+        if (node->elem == elem)
+            return;
+
+        if (node->elem > elem){
+            insert(node->left, elem);
+            if (node->priority < node->left->priority)
+                node = rotateRight(node);
+        }else{
+            insert(node->right, elem);
+            if (node->priority < node->right->priority)
+                node = rotateLeft(node);
+        }
+    }
+
+    void remove(shared_ptr<node_t>& node, const T& elem){
+        if (node == nullptr)
+            return;
+        
+        if (node->elem == elem){
+            if (!node->left && !node->right)
+                node = nullptr;
+            // Keep rotating until the node to be deleted becomes a leaf node.
+            else if (!node->left || (node->left && node->right && 
+                node->left->priority < node->right->priority)){
+                node = rotateLeft(node);
+                remove(node->left, elem);
+            }
+            else{
+                node = rotateRight(node);
+                remove(node->right, elem);
+            }
+        }
+        else if (node->elem > elem)
+            remove(node->left, elem);
+        else
+            remove(node->right, elem);
+    }
+};
+\end{lstlisting}
+
+\section{Graph Theory}
+\subsection{Topological Sort}
+\begin{lstlisting}
+void dfs2(int u) {    // change function name to differentiate with original dfs
+  dfs_num[u] = DFS_BLACK;
+  for (int j = 0; j < (int)AdjList[u].size(); j++) {
+    ii v = AdjList[u][j];
+    if (dfs_num[v.first] == DFS_WHITE)
+      dfs2(v.first);
+  }
+  topoSort.push_back(u); }                   // that is, this is the only change
+
+//inside int main()
+  // make sure that the given graph is DAG
+  printThis("Topological Sort (the input graph must be DAG)");
+  topoSort.clear();
+  dfs_num.assign(V, DFS_WHITE);
+  for (int i = 0; i < V; i++)            // this part is the same as finding CCs
+    if (dfs_num[i] == DFS_WHITE)
+      dfs2(i);
+  reverse(topoSort.begin(), topoSort.end());                 // reverse topoSort
+  for (int i = 0; i < (int)topoSort.size(); i++)       // or you can simply read
+    printf(" %d", topoSort[i]);           // the content of 'topoSort' backwards
+  printf("\n");
+\end{lstlisting}
+
+\subsection{Articulation Points and Bridges}
+\begin{lstlisting}
+vi dfs_low;       // additional information for articulation points/bridges/SCCs
+vi articulation_vertex;
+int dfsNumberCounter, dfsRoot, rootChildren;
+
+void articulationPointAndBridge(int u) {
+  dfs_low[u] = dfs_num[u] = dfsNumberCounter++;      // dfs_low[u] <= dfs_num[u]
+  for (int j = 0; j < (int)AdjList[u].size(); j++) {
+    ii v = AdjList[u][j];
+    if (dfs_num[v.first] == DFS_WHITE) {                          // a tree edge
+      dfs_parent[v.first] = u;
+      if (u == dfsRoot) rootChildren++;  // special case, count children of root
+
+      articulationPointAndBridge(v.first);
+
+      if (dfs_low[v.first] >= dfs_num[u])              // for articulation point
+        articulation_vertex[u] = true;           // store this information first
+      if (dfs_low[v.first] > dfs_num[u])                           // for bridge
+        printf(" Edge (%d, %d) is a bridge\n", u, v.first);
+      dfs_low[u] = min(dfs_low[u], dfs_low[v.first]);       // update dfs_low[u]
+    }
+    else if (v.first != dfs_parent[u])       // a back edge and not direct cycle
+      dfs_low[u] = min(dfs_low[u], dfs_num[v.first]);       // update dfs_low[u]
+} }
+
+//inside int main()
+  printThis("Articulation Points & Bridges (the input graph must be UNDIRECTED)");
+  dfsNumberCounter = 0; dfs_num.assign(V, DFS_WHITE); dfs_low.assign(V, 0);
+  dfs_parent.assign(V, -1); articulation_vertex.assign(V, 0);
+  printf("Bridges:\n");
+  for (int i = 0; i < V; i++)
+    if (dfs_num[i] == DFS_WHITE) {
+      dfsRoot = i; rootChildren = 0;
+      articulationPointAndBridge(i);
+      articulation_vertex[dfsRoot] = (rootChildren > 1); }       // special case
+  printf("Articulation Points:\n");
+  for (int i = 0; i < V; i++)
+    if (articulation_vertex[i])
+      printf(" Vertex %d\n", i);
+\end{lstlisting}
+\newpage
+
+\subsection{Tarjan's Algorithm}
+\begin{lstlisting}
+vi S, visited;                                    // additional global variables
+int numSCC;
+
+void tarjanSCC(int u) {
+  dfs_low[u] = dfs_num[u] = dfsNumberCounter++;      // dfs_low[u] <= dfs_num[u]
+  S.push_back(u);           // stores u in a vector based on order of visitation
+  visited[u] = 1;
+  for (int j = 0; j < (int)AdjList[u].size(); j++) {
+    ii v = AdjList[u][j];
+    if (dfs_num[v.first] == DFS_WHITE)
+      tarjanSCC(v.first);
+    if (visited[v.first])                                // condition for update
+      dfs_low[u] = min(dfs_low[u], dfs_low[v.first]);
+  }
+
+  if (dfs_low[u] == dfs_num[u]) {         // if this is a root (start) of an SCC
+    printf("SCC %d:", ++numSCC);            // this part is done after recursion
+    while (1) {
+      int v = S.back(); S.pop_back(); visited[v] = 0;
+      printf(" %d", v);
+      if (u == v) break;
+    }
+    printf("\n");
+} }
+
+//inside int main()
+  printThis("Strongly Connected Components (the input graph must be DIRECTED)");
+  dfs_num.assign(V, DFS_WHITE); dfs_low.assign(V, 0); visited.assign(V, 0);
+  dfsNumberCounter = numSCC = 0;
+  for (int i = 0; i < V; i++)
+    if (dfs_num[i] == DFS_WHITE)
+      tarjanSCC(i);
+\end{lstlisting}
+
+\subsection{Bipartite Graph Check}
+\begin{lstlisting}
+	queue<int> q; q.push(s);
+	vi color(V, INF); color[s] = 0;
+	bool isBipartite = true;
+	while (!q.empty() & isBipartite){
+		int u = q.front(); q.pop();
+		for (int j = 0; j < (int)AdjList[u].size(); j++){
+			ii v = AdjList[u][j];
+			if (color[v.first] == INF){
+				color[v.first] = 1 - color[u];
+				q.push(v.first);}
+			else if (color[v.first] == color[u]){
+				isBipartite = false; break;}}
+	}
+\end{lstlisting}
+
+\subsection{Kruskal's Algorithm}
+\begin{lstlisting}
+  vector< pair<int, ii> > EdgeList;   // (weight, two vertices) of the edge
+  for (int i = 0; i < E; i++) {
+    scanf("%d %d %d", &u, &v, &w);            // read the triple: (u, v, w)
+    EdgeList.push_back(make_pair(w, ii(u, v)));                // (w, u, v)
+    AdjList[u].push_back(ii(v, w));
+    AdjList[v].push_back(ii(u, w));
+  }
+  sort(EdgeList.begin(), EdgeList.end()); // sort by edge weight O(E log E)
+                      // note: pair object has built-in comparison function
+
+  int mst_cost = 0;
+  UnionFind UF(V);                     // all V are disjoint sets initially
+  for (int i = 0; i < E; i++) {                      // for each edge, O(E)
+    pair<int, ii> front = EdgeList[i];
+    if (!UF.isSameSet(front.second.first, front.second.second)) {  // check
+      mst_cost += front.first;                // add the weight of e to MST
+      UF.unionSet(front.second.first, front.second.second);    // link them
+  } }                       // note: the runtime cost of UFDS is very light
+
+  // note: the number of disjoint sets must eventually be 1 for a valid MST
+  printf("MST cost = %d (Kruskal's)\n", mst_cost);
+\end{lstlisting}
+
+\subsection{Prim's Algorithm}
+\begin{lstlisting}
+vi taken;                                  // global boolean flag to avoid cycle
+priority_queue<ii> pq;            // priority queue to help choose shorter edges
+
+void process(int vtx) {    // so, we use -ve sign to reverse the sort order
+  taken[vtx] = 1;
+  for (int j = 0; j < (int)AdjList[vtx].size(); j++) {
+    ii v = AdjList[vtx][j];
+    if (!taken[v.first]) pq.push(ii(-v.second, -v.first));
+} }                                // sort by (inc) weight then by (inc) id
+// inside int main() --- assume the graph is stored in AdjList, pq is empty
+  taken.assign(V, 0);                // no vertex is taken at the beginning
+  process(0);   // take vertex 0 and process all edges incident to vertex 0
+  mst_cost = 0;
+  while (!pq.empty()) {  // repeat until V vertices (E=V-1 edges) are taken
+    ii front = pq.top(); pq.pop();
+    u = -front.second, w = -front.first;  // negate the id and weight again
+    if (!taken[u])                 // we have not connected this vertex yet
+      mst_cost += w, process(u); // take u, process all edges incident to u
+  }                                        // each edge is in pq only once!
+  printf("MST cost = %d (Prim's)\n", mst_cost);
+\end{lstlisting}
+\newpage
+
+\subsection{Dijkstra's Algorithm}
+\begin{lstlisting}
+  // Dijkstra routine
+  vi dist(V, INF); dist[s] = 0;                    // INF = 1B to avoid overflow
+  priority_queue< ii, vector<ii>, greater<ii> > pq; pq.push(ii(0, s));
+                             // ^to sort the pairs by increasing distance from s
+  while (!pq.empty()) {                                             // main loop
+    ii front = pq.top(); pq.pop();     // greedy: pick shortest unvisited vertex
+    int d = front.first, u = front.second;
+    if (d > dist[u]) continue;   // this check is important, see the explanation
+    for (int j = 0; j < (int)AdjList[u].size(); j++) {
+      ii v = AdjList[u][j];                       // all outgoing edges from u
+      if (dist[u] + v.second < dist[v.first]) {
+        dist[v.first] = dist[u] + v.second;                 // relax operation
+        pq.push(ii(dist[v.first], v.first));
+  } } }  // note: this variant can cause duplicate items in the priority queue
+\end{lstlisting}
+
+\subsection{Bellman Ford's Algorithm}
+\begin{lstlisting}
+  // Bellman Ford routine
+  vi dist(V, INF); dist[s] = 0;
+  for (int i = 0; i < V - 1; i++)  // relax all E edges V-1 times, overall O(VE)
+    for (int u = 0; u < V; u++)                        // these two loops = O(E)
+      for (int j = 0; j < (int)AdjList[u].size(); j++) {
+        ii v = AdjList[u][j];        // we can record SP spanning here if needed
+        dist[v.first] = min(dist[v.first], dist[u] + v.second);         // relax
+      }
+\end{lstlisting}
+
+\subsection{Check Negative Cycle with Bellman Ford's Algorithm}
+\begin{lstlisting}
+  bool hasNegativeCycle = false;
+  for (int u = 0; u < V; u++)                          // one more pass to check
+    for (int j = 0; j < (int)AdjList[u].size(); j++) {
+      ii v = AdjList[u][j];
+      if (dist[v.first] > dist[u] + v.second)                 // should be false
+        hasNegativeCycle = true;     // but if true, then negative cycle exists!
+    }
+  printf("Negative Cycle Exist? %s\n", hasNegativeCycle ? "Yes" : "No");
+\end{lstlisting}
+
+\subsection{Floyd Warshall's Algorithm}
+\begin{lstlisting}
+  for (int k = 0; k < V; k++) // common error: remember that loop order is k->i->j
+    for (int i = 0; i < V; i++)
+      for (int j = 0; j < V; j++)
+        AdjMatrix[i][j] = min(AdjMatrix[i][j], AdjMatrix[i][k] + AdjMatrix[k][j]);
+\end{lstlisting}
+\newpage
+
+\subsection{Shortest Path Faster Algorithm}
+\begin{lstlisting}
+    // SPFA from source S
+    // initially, only S has dist = 0 and in the queue
+    vi dist(n, INF); dist[S] = 0;
+    queue<int> q; q.push(S);
+    vi in_queue(n, 0); in_queue[S] = 1;
+
+    while (!q.empty()) {
+      int u = q.front(); q.pop(); in_queue[u] = 0;
+      for (j = 0; j < (int)AdjList[u].size(); j++) { // all outgoing edges from u
+        int v = AdjList[u][j].first, weight_u_v = AdjList[u][j].second;
+        if (dist[u] + weight_u_v < dist[v]) { // if can relax
+          dist[v] = dist[u] + weight_u_v; // relax
+          if (!in_queue[v]) { // add to the queue only if it's not in the queue
+            q.push(v);
+            in_queue[v] = 1;
+          }
+        }
+      }
+    }
+\end{lstlisting}
+
+\subsection{Network Flow}
+\begin{lstlisting}
+void augment(int v, int min_edge){
+    if (v == s){
+        flow = min_edge;
+        return;
+    }
+    else if (parent[v] != -1){
+        int u = parent[v];
+        augment(u, min(min_edge, residue[u][v]));
+        residue[u][v] -= flow;
+        residue[v][u] += flow;
+    }
+}
+
+void Dinic(){
+    max_flow = 0;
+    while (true){
+        parent.assign(V, -1);
+        vector<bool> visited(V, false);
+        queue<int> q;
+        q.push(s);
+        visited[s] = true;
+        while (!q.empty()){
+            int u = q.front();
+            q.pop();
+            if (u == t)
+                break;
+            for (int v : adjList[u])
+                if (!visited[v] && residue[u][v] > 0){
+                    parent[v] = u;
+                    visited[v] = true;
+                    q.push(v);
+                }
+        }
+
+        int new_flow = 0;
+        for (int u : adjList[t]){
+            if (residue[u][t] <= 0)
+                continue;
+            flow = 0;
+            augment(u, residue[u][t]);
+            residue[u][t] -= flow;
+            residue[t][u] += flow;
+            new_flow += flow;
+        }
+        if (new_flow == 0)
+            break;
+        max_flow += new_flow; 
+    }
+}
+\end{lstlisting}
+
+\subsection{Euler Tour}
+\begin{lstlisting}
+void Euler_tour(int u, list<int> &tour, list<int>::iterator it, 
+                vector<vector<pair<int, bool>>> &adj_list) {
+    for (auto &edge : adj_list[u]) {
+        if (edge.second) {
+            int v = edge.first;
+            edge.second = false;
+            for (auto &bi_edge : adj_list[v]) 
+                if (bi_edge.first == u && bi_edge.second) {
+                    bi_edge.second = false;
+                    break;
+                }
+            Euler_tour(v, tour, tour.insert(it, u), adj_list);
+        }
+    }
+}
+\end{lstlisting}
+
+\subsection{Max Cardinality Bipartite Matching}
+\begin{lstlisting}
+int augment(int u, const vector<vector<int>> &adj_list, 
+            vector<int> &match, vector<bool> &visited) {
+    if (visited[u])
+        return 0;
+    visited[u] = true;
+    for (int v : adj_list[u])
+        if (match[v] == -1 || augment(match[v], adj_list, match, visited)) {
+            match[v] = u;
+            return 1;
+        }
+    return 0;
+}   
+vector<int> match(adj_list.size(), -1);
+vector<bool> visited;
+int MCBM = 0;
+for (int i = 0; i < adj_list.size(); i++) {
+    if (left[i]) {
+        visited.assign(adj_list.size(), false);
+        MCBM += augment(i, adj_list, match, visited);
+    }
+}
+\end{lstlisting}
+
+\section{Number Theory}
+\subsection{Sieve of Eratosthenes}
+\begin{lstlisting}
+#define BOUND 1000000
+
+bitset<BOUND> bs;
+vector<long long> primes;
+
+void sieve() {
+    bs.set();
+    bs[0] = bs[1] = 0;
+    for (long long i = 2; i <= BOUND; i++) {
+        if (bs[i]) {
+            for (long long j = i * i; j <= BOUND; j += i)
+                bs[j] = 0;
+            primes.push_back(i);
+        }
+    }
+}
+
+bool is_prime(long long N) {
+    if (N <= BOUND)
+        return bs[N];
+    for (long long prime: primes) {
+        if (prime > sqrt(N))
+            return true;
+        if (N % prime == 0)
+            return false;
+    }
+    return true;
+}
+\end{lstlisting}
+\newpage
+
+\subsection{Prime Factors}
+\begin{lstlisting}
+vi primeFactors(ll N) {   // remember: vi is vector of integers, ll is long long
+  vi factors;                    // vi `primes' (generated by sieve) is optional
+  ll PF_idx = 0, PF = primes[PF_idx];     // using PF = 2, 3, 4, ..., is also ok
+  while (N != 1 && (PF * PF <= N)) {   // stop at sqrt(N), but N can get smaller
+    while (N % PF == 0) { N /= PF; factors.push_back(PF); }    // remove this PF
+    PF = primes[++PF_idx];                              // only consider primes!
+  }
+  if (N != 1) factors.push_back(N);     // special case if N is actually a prime
+  return factors;         // if pf exceeds 32-bit integer, you have to change vi
+}
+\end{lstlisting}
+
+\subsection{Matrix}
+\begin{lstlisting}
+#define MAX_N 2                                  // increase this if needed
+struct Matrix { ll mat[MAX_N][MAX_N]; };     // to let us return a 2D array
+
+Matrix matMul(Matrix a, Matrix b) {            // O(n^3), but O(1) as n = 2
+  Matrix ans; int i, j, k;
+  for (i = 0; i < MAX_N; i++)
+    for (j = 0; j < MAX_N; j++)
+      for (ans.mat[i][j] = k = 0; k < MAX_N; k++) {
+        ans.mat[i][j] += (a.mat[i][k] % MOD) * (b.mat[k][j] % MOD);
+        ans.mat[i][j] %= MOD;             // modulo arithmetic is used here
+      }
+  return ans;
+}
+
+Matrix matPow(Matrix base, int p) {  // O(n^3 log p), but O(log p) as n = 2
+  Matrix ans; int i, j;
+  for (i = 0; i < MAX_N; i++)
+    for (j = 0; j < MAX_N; j++)
+      ans.mat[i][j] = (i == j);                  // prepare identity matrix
+  while (p) {       // iterative version of Divide & Conquer exponentiation
+    if (p & 1)                    // check if p is odd (the last bit is on)
+      ans = matMul(ans, base);                                // update ans
+    base = matMul(base, base);                           // square the base
+    p >>= 1;                                               // divide p by 2
+  }
+  return ans;
+}
+\end{lstlisting}
+
+\subsection{Catalan Numbers}
+\(Cat(n) = \frac{2n!}{n!\times n! \times (n + 1)} \\ 
+Cat(n + 1) = \frac{(2n + 2) \times (2n + 1)}{(n + 2) \times (n + 1)}
+\times Cat(n) \)
+
+\subsection{Schr\"oder-Hipparchus Number}
+\(S(n) = \frac{1}{n}((6n - 9)S(n - 1) - (n - 3)S(n - 2)) \)
+
+\subsection{Extended Euclid}
+\begin{lstlisting}
+long long x, y, d;
+
+void extended_Euclid(long long a, long long b) {
+    if (b == 0) { x = 1; y = 0; d = a; return;}
+    extended_Euclid(b, a % b);
+    long long x1 = y, y1 = x - (a / b) * y;
+    x = x1;
+    y = y1;
+}
+
+// Gives ax0 + by0 = d.
+// x = x0 + (b/d)n, y = y0 - (a/d)n.
+extended_Euclid(a, b);
+
+\end{lstlisting}
+\newpage
+
+\section{String Processing}
+\subsection{KMP}
+\begin{lstlisting}
+#define MAX_N 100010
+
+char T[MAX_N], P[MAX_N]; // T = text, P = pattern
+int b[MAX_N], n, m; // b = back table, n = length of T, m = length of P
+
+void kmpPreprocess() { // call this before calling kmpSearch()
+  int i = 0, j = -1; b[0] = -1; // starting values
+  while (i < m) { // pre-process the pattern string P
+    while (j >= 0 && P[i] != P[j]) j = b[j]; // if different, reset j using b
+    i++; j++; // if same, advance both pointers
+    b[i] = j; // observe i = 8, 9, 10, 11, 12 with j = 0, 1, 2, 3, 4
+} }           // in the example of P = "SEVENTY SEVEN" above
+
+void kmpSearch() { // this is similar as kmpPreprocess(), but on string T
+  int i = 0, j = 0; // starting values
+  while (i < n) { // search through string T
+    while (j >= 0 && T[i] != P[j]) j = b[j]; // if different, reset j using b
+    i++; j++; // if same, advance both pointers
+    if (j == m) { // a match found when j == m
+      printf("P is found at index %d in T\n", i - j);
+      j = b[j]; // prepare j for the next possible match
+} } }
+\end{lstlisting}
+
+\subsection{Suffix Array}
+\begin{lstlisting}
+#define MAX_N 100010                         // second approach: O(n log n)
+char T[MAX_N];                   // the input string, up to 100K characters
+int n;                                        // the length of input string
+int RA[MAX_N], tempRA[MAX_N];        // rank array and temporary rank array
+int SA[MAX_N], tempSA[MAX_N];    // suffix array and temporary suffix array
+int c[MAX_N];                                    // for counting/radix sort
+
+char P[MAX_N];                  // the pattern string (for string matching)
+int m;                                      // the length of pattern string
+
+int Phi[MAX_N];                      // for computing longest common prefix
+int PLCP[MAX_N];
+int LCP[MAX_N];  // LCP[i] stores the LCP between previous suffix T+SA[i-1]
+                                              // and current suffix T+SA[i]
+
+bool cmp(int a, int b) { return strcmp(T + a, T + b) < 0; }      // compare
+
+void constructSA_slow() {               // cannot go beyond 1000 characters
+  for (int i = 0; i < n; i++) SA[i] = i; // initial SA: {0, 1, 2, ..., n-1}
+  sort(SA, SA + n, cmp); // sort: O(n log n) * compare: O(n) = O(n^2 log n)
+}
+
+void countingSort(int k) {                                          // O(n)
+  int i, sum, maxi = max(300, n);   // up to 255 ASCII chars or length of n
+  memset(c, 0, sizeof c);                          // clear frequency table
+  for (i = 0; i < n; i++)       // count the frequency of each integer rank
+    c[i + k < n ? RA[i + k] : 0]++;
+  for (i = sum = 0; i < maxi; i++) {
+    int t = c[i]; c[i] = sum; sum += t;
+  }
+  for (i = 0; i < n; i++)          // shuffle the suffix array if necessary
+    tempSA[c[SA[i]+k < n ? RA[SA[i]+k] : 0]++] = SA[i];
+  for (i = 0; i < n; i++)                     // update the suffix array SA
+    SA[i] = tempSA[i];
+}
+
+void constructSA() {         // this version can go up to 100000 characters
+  int i, k, r;
+  for (i = 0; i < n; i++) RA[i] = T[i];                 // initial rankings
+  for (i = 0; i < n; i++) SA[i] = i;     // initial SA: {0, 1, 2, ..., n-1}
+  for (k = 1; k < n; k <<= 1) {       // repeat sorting process log n times
+    countingSort(k);  // actually radix sort: sort based on the second item
+    countingSort(0);          // then (stable) sort based on the first item
+    tempRA[SA[0]] = r = 0;             // re-ranking; start from rank r = 0
+    for (i = 1; i < n; i++)                    // compare adjacent suffixes
+      tempRA[SA[i]] = // if same pair => same rank r; otherwise, increase r
+      (RA[SA[i]] == RA[SA[i-1]] && RA[SA[i]+k] == RA[SA[i-1]+k]) ? r : ++r;
+    for (i = 0; i < n; i++)                     // update the rank array RA
+      RA[i] = tempRA[i];
+    if (RA[SA[n-1]] == n-1) break;               // nice optimization trick
+} }
+
+void computeLCP_slow() {
+  LCP[0] = 0;                                              // default value
+  for (int i = 1; i < n; i++) {                // compute LCP by definition
+    int L = 0;                                       // always reset L to 0
+    while (T[SA[i] + L] == T[SA[i-1] + L]) L++;      // same L-th char, L++
+    LCP[i] = L;
+} }
+
+void computeLCP() {
+  int i, L;
+  Phi[SA[0]] = -1;                                         // default value
+  for (i = 1; i < n; i++)                            // compute Phi in O(n)
+    Phi[SA[i]] = SA[i-1];    // remember which suffix is behind this suffix
+  for (i = L = 0; i < n; i++) {             // compute Permuted LCP in O(n)
+    if (Phi[i] == -1) { PLCP[i] = 0; continue; }            // special case
+    while (T[i + L] == T[Phi[i] + L]) L++;       // L increased max n times
+    PLCP[i] = L;
+    L = max(L-1, 0);                             // L decreased max n times
+  }
+  for (i = 0; i < n; i++)                            // compute LCP in O(n)
+    LCP[i] = PLCP[SA[i]];   // put the permuted LCP to the correct position
+}
+
+ii stringMatching() {                      // string matching in O(m log n)
+  int lo = 0, hi = n-1, mid = lo;              // valid matching = [0..n-1]
+  while (lo < hi) {                                     // find lower bound
+    mid = (lo + hi) / 2;                              // this is round down
+    int res = strncmp(T + SA[mid], P, m);  // try to find P in suffix 'mid'
+    if (res >= 0) hi = mid;        // prune upper half (notice the >= sign)
+    else          lo = mid + 1;           // prune lower half including mid
+  }                                      // observe '=' in "res >= 0" above
+  if (strncmp(T + SA[lo], P, m) != 0) return ii(-1, -1);    // if not found
+  ii ans; ans.first = lo;
+  lo = 0; hi = n - 1; mid = lo;
+  while (lo < hi) {            // if lower bound is found, find upper bound
+    mid = (lo + hi) / 2;
+    int res = strncmp(T + SA[mid], P, m);
+    if (res > 0) hi = mid;                              // prune upper half
+    else         lo = mid + 1;            // prune lower half including mid
+  }                           // (notice the selected branch when res == 0)
+  if (strncmp(T + SA[hi], P, m) != 0) hi--;                 // special case
+  ans.second = hi;
+  return ans;
+} // return lower/upperbound as first/second item of the pair, respectively
+
+ii LRS() {                 // returns a pair (the LRS length and its index)
+  int i, idx = 0, maxLCP = -1;
+  for (i = 1; i < n; i++)                         // O(n), start from i = 1
+    if (LCP[i] > maxLCP)
+      maxLCP = LCP[i], idx = i;
+  return ii(maxLCP, idx);
+}
+
+int owner(int idx) { return (idx < n-m-1) ? 1 : 2; }
+
+ii LCS() {                 // returns a pair (the LCS length and its index)
+  int i, idx = 0, maxLCP = -1;
+  for (i = 1; i < n; i++)                         // O(n), start from i = 1
+    if (owner(SA[i]) != owner(SA[i-1]) && LCP[i] > maxLCP)
+      maxLCP = LCP[i], idx = i;
+  return ii(maxLCP, idx);
+}
+\end{lstlisting}
+
+\newpage
+\section{Config Files}
+\subsection{.vimrc}
+\begin{lstlisting}
+set number
+set autoindent
+set expandtab
+set tabstop=4
+set softtabstop=4
+set shiftwidth=4
+set cursorline
+set clipboard=unnamedplus
+set cc=100
+set ruler
+set spell
+\end{lstlisting}
+
+\subsection{.bash\_profile}
+\begin{lstlisting}
+alias vim="gvim -v"
+\end{lstlisting}
+
+\end{document}
+
