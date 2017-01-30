@@ -731,6 +731,341 @@ extended_Euclid(a, b);
 \end{lstlisting}
 \newpage
 
+\section{Computational Geometry}
+\begin{lstlisting}
+const double PI = acos(-1);
+
+struct Point{
+  double x, y;
+  Point(double x=0, double y=0):x(x), y(y){}
+};
+
+typedef Point Vector;
+
+// Vector + Vector = Vector / Point + Vector = Point
+Vector operator + (Vector A, Vector B){
+  return Vector(A.x + B.x, A.y + B.y);
+}
+
+// Point - Point = Vector
+Vector operator - (Point A, Point B){
+  return Vector(A.x - B.x, A.y - B.y);
+}
+
+Vector operator * (Vector A, double p){
+  return Vector(A.x * p, A.y * p);
+}
+
+Vector operator / (Vector A, double p){
+  return Vector(A.x / p, A.y / p);
+}
+
+const double eps = 1e-10;
+int dcmp(double x){
+  if(fabs(x) < eps)
+    return 0;
+  return x < 0 ? -1 : 1;
+}
+
+bool operator < (const Point& a, const Point& b){
+  return dcmp(a.x - b.x) < 0 || (dcmp(a.x-b.x)==0 && dcmp(a.y - b.y) < 0);
+}
+
+bool operator == (const Point& a, const Point &b){
+  return dcmp(a.x-b.x) == 0 && dcmp(a.y-b.y) == 0;
+}
+
+double Dot(Vector A, Vector B){
+  return A.x*B.x + A.y*B.y;
+}
+
+double Length(Vector A){
+  return sqrt(Dot(A,A));
+}
+
+// polar angle theta is the counterclockwise angle from the x-axis at which a point in the xy-plane lies
+// (-pi, pi]
+double angle(Vector v) {
+  return atan2(v.y, v.x);
+}
+
+// counterclockwise angle from A to B [0, pi]
+double Angle(Vector A, Vector B){
+  return acos(Dot(A,B)/Length(A)/Length(B));
+}
+
+double Cross(Vector A, Vector B){
+  return A.x*B.y - A.y*B.x;
+}
+
+// counterclockwisely rotate A for rad
+Vector Rotate(Vector A, double rad){
+  return Vector(A.x*cos(rad)-A.y*sin(rad), A.x*sin(rad)+A.y*cos(rad));
+}
+
+// unit normal vector for A（left rotate pi/2） A != 0
+Vector Normal(Vector A){
+  double L = Length(A);
+  return Vector(-A.y/L, A.x/L);
+}
+
+// P+tv, Q+tw should have only one intersection, iff Cross(v,w) != 0
+Point GetLineIntersection(Point P, Vector v, Point Q, Vector w){
+  Vector u = P-Q;
+  double t = Cross(w,u)/Cross(v,w);
+  return P+v*t;
+}
+
+// distance from P to line AB
+double DistanceToLine(Point P, Point A, Point B){
+  Vector v1 = B-A, v2 = P-A;
+  return fabs(Cross(v1,v2))/Length(v1); // if no fabs，then directed distance
+}
+
+// distance from P to segment AB
+double DistanceToSegment(Point P, Point A, Point B){
+  if(A == B)
+    return Length(P-A);
+  Vector v1 = B-A, v2 = P-A, v3 = P-B;
+  if(dcmp(Dot(v1,v2))<0)
+    return Length(v2);
+  if(dcmp(Dot(v1,v3))>0)
+    return Length(v3);
+  return fabs(Cross(v1,v2))/Length(v1); // if no fabs，then directed distance
+}
+
+Point GetLineProjection(Point P, Point A, Point B){
+  Vector v = B-A;
+  return A+v*(Dot(v,P-A) / Dot(v,v));
+}
+
+// determine segment a1a2 and b1b2 normal intersection (only one intersection, not endpoint)
+// if allowing intersecting on endpoints: 
+// 1) c1 = c2 = 0: on the same line, probably intersecting
+// 2) otherwise, one endpoint on the other segment (Use OnSegment() method)
+bool segmentProperIntersection(Point a1, Point a2, Point b1, Point b2){
+  double c1 = Cross(a2-a1,b1-a1);
+  double c2 = Cross(a2-a1,b2-a1);
+  double c3 = Cross(b2-b1,a1-b1);
+  double c4 = Cross(b2-b1,a2-b1);
+  return dcmp(c1)*dcmp(c2)<0 && dcmp(c3)*dcmp(c4)<0;
+}
+
+// determine P on segment a1a2 (endpoint excluded)
+bool OnSegment(Point p, Point a1, Point a2) {
+  return dcmp(Cross(a1-p,a2-p))==0 && dcmp(Dot(a1-p,a2-p))<0;
+}
+
+// calulate the direct area for polygon（not necessarily convex）
+double PolygonArea(Point* p, int n) {
+  double area = 0;
+  for(int i=1;i<n-1;i++)
+    area += Cross(p[i]-p[0],p[i+1]-p[0]);
+  return area/2;
+}
+
+// convex hull: n points in array p, ch array for output, return the number of points on hull
+// no duplicate points in input; the order of input points is not preserved
+// if want input points on edges of hull, change two <= to <
+int ConvexHull(Point* p, int n, Point* ch) {
+  sort(p,p+n);
+  int m = 0;
+  for(int i=0;i<n;i++){
+    while(m>1 && dcmp(Cross(ch[m-1]-ch[m-2], p[i]-ch[m-2])) <= 0)
+      m--;
+    ch[m++] = p[i];
+  }
+  int k = m;
+  for(int i=n-2;i>=0;i--){
+    while(m>k && dcmp(Cross(ch[m-1]-ch[m-2], p[i]-ch[m-2])) <= 0)
+      m--;
+    ch[m++] = p[i];
+  }
+  if(n>1)
+    m--;
+  return m;
+}
+
+// return the diameter of set of points (Rotating Calipers Algorithm) 
+// ch: already convex hull (no three points in a line) n: the number of points
+double diameter(Point* ch, int n) {
+  if(n == 1) return 0;
+  if(n == 2) return Length(ch[0] - ch[1]);
+  ch[n] = ch[0];
+  double ans = 0;
+  for(int u = 0, v = 1; u < n; u++) {
+    // line for p[u]-p[u+1]
+    for(;;) {
+      // when Area(p[u], p[u+1], p[v+1]) <= Area(p[u], p[u+1], p[v]) stop rotating
+      // aka Cross(p[u+1]-p[u], p[v+1]-p[u]) - Cross(p[u+1]-p[u], p[v]-p[u]) <= 0 (now this angle < pi, no need for abs)
+      // from Cross(A,B) - Cross(A,C) = Cross(A,B-C)
+      // simplify to Cross(p[u+1]-p[u], p[v+1]-p[v]) <= 0
+      double diff = Cross(ch[u+1]-ch[u], ch[v+1]-ch[v]);
+      if(dcmp(diff) <= 0) {
+        ans = max(ans, Length(ch[u]-ch[v]));
+        if(dcmp(diff) == 0)
+          ans = max(ans, Length(ch[u]-ch[v+1]));
+        break;
+      }
+      v = (v + 1) % n;
+    }
+  }
+  return ans;
+}
+
+// poly: polygon n: the number of points
+// return value: (-2, vertex) (-1, edges) (0, outside) (1, inside)
+// determine if point on the left side of all edges (vertex already counterclock ordered)
+int isPointInPolygon(Point p, Point* poly, int n){
+  int wn = 0;
+  for(int i=0;i<n;i++){
+    if(p == poly[i])
+      return -2;
+    if(OnSegment(p, poly[i], poly[(i+1)%n]))
+      return -1;
+    int k = dcmp(Cross(poly[(i+1)%n]-poly[i], p-poly[i]));
+    int d1 = dcmp(poly[i].y - p.y);
+    int d2 = dcmp(poly[(i+1)%n].y - p.y);
+    if(k>0 && d1<=0 && d2>0)
+      wn++;
+    if(k<0 && d2<=0 && d1>0)
+      wn--;
+  }
+  if(wn != 0)
+    return 1;
+  return 0;
+}
+
+struct Line{
+  Point p;
+  Vector v;
+  Line(Point p, Vector v):p(p),v(v){}
+  Point point(double t) {
+      return p + v*t;
+    }
+    Line move(double d) {
+      return Line(p + Normal(v)*d, v);
+  }
+};
+
+struct Circle{
+  Point c;
+  double r;
+  Circle(Point c, double r):c(c),r(r){}
+  Point point(double a){
+    return Point(c.x + cos(a)*r, c.y + sin(a)*r);
+  }
+};
+
+// return number of intersection, sol has all intersection
+// intersection P = A + t(B-A)，simplify to et^2+ft+g = 0
+int getLineCircleIntersection(Line L, Circle C, double& t1, double& t2, vector<Point>& sol){
+  double a = L.v.x, b = L.p.x - C.c.x, c = L.v.y, d = L.p.y - C.c.y;
+  double e = a*a + c*c, f = 2*(a*b+c*d), g = b*b + d*d - C.r*C.r;
+  double delta = f*f - 4*e*g;
+  if(dcmp(delta) < 0)
+    return 0;
+  if(dcmp(delta) == 0){
+    t1 = t2 = -f / (2*e);
+    sol.push_back(L.point(t1));
+    return 1;
+  }
+  t1 = (-f - sqrt(delta)) / (2*e);
+  sol.push_back(L.point(t1));
+  t2 = (-f + sqrt(delta)) / (2*e);
+  sol.push_back(L.point(t2));
+  return 2;
+}
+
+// return the number of intersection
+// if two circle identical, then return -1
+int getCircleCircleIntersection(Circle C1, Circle C2, vector<Point>& sol){
+  double d = Length(C1.c-C2.c);
+  if(dcmp(d) == 0){
+    if(dcmp(C1.r-C2.r) == 0)
+      return -1;
+    return 0;
+  }
+  if(dcmp(C1.r+C2.r-d) < 0)
+    return 0;
+  if(dcmp(fabs(C1.r-C2.r) - d) > 0)
+    return 0;
+  double a = angle(C2.c-C1.c);
+  double da = acos((C1.r*C1.r + d*d - C2.r*C2.r) / (2*C1.r*d)); // angle from C1C2 to C1P1
+  Point p1 = C1.point(a-da), p2 = C1.point(a+da);
+  sol.push_back(p1);
+  if(p1 == p2)
+    return 1;
+  sol.push_back(p2);
+  return 2;
+}
+
+// tangent lines from P to C
+// v[i]: i-th tangent lines, return the number of tangent lines
+int getTangents(Point p, Circle C, Vector* v){
+  Vector u = C.c - p;
+  double dist = Length(u);
+  if(dist < C.r)
+    return 0;
+  else if(dcmp(dist-C.r)==0){
+    v[0] = Rotate(u,PI/2);
+    return 1;
+  } else {
+    double ang = asin(C.r / dist);
+    v[0] = Rotate(u, -ang);
+    v[1] = Rotate(u, +ang);
+    return 2;
+  }
+}
+
+// return the number of tangents, -1 means inf
+// a[i], b[i]: point of tangency with i-th tangent on A, B; same when internally or externally tangent
+int getTangents(Circle A, Circle B, Point* a, Point* b) {
+  int cnt = 0;
+  if(A.r < B.r){
+    swap(A, B);
+    swap(a, b);
+  }
+  double d2 = (A.c.x-B.c.x)*(A.c.x-B.c.x) + (A.c.y-B.c.y)*(A.c.y-B.c.y);
+  double rdiff = A.r - B.r;
+  double rsum = A.r + B.r;
+  if(dcmp(d2 - rdiff*rdiff) < 0) // containing
+    return 0;
+  double base = atan2(B.c.y-A.c.y, B.c.x-A.c.x);
+  if(dcmp(d2)==0 && dcmp(A.r-B.r)==0) // infinite tangents
+    return -1;
+  if(dcmp(d2-rdiff*rdiff) == 0){ // inscribe, one tangent
+    a[cnt] = A.point(base);
+    b[cnt] = B.point(base);
+    cnt++;
+    return 1;
+  }
+  double ang = acos((A.r-B.r)/sqrt(d2)); // two external common tangents
+  a[cnt] = A.point(base + ang);
+  b[cnt] = B.point(base + ang);
+  cnt++;
+  a[cnt] = A.point(base - ang);
+  b[cnt] = B.point(base - ang);
+  cnt++;
+  if(dcmp(d2-rsum*rsum) == 0){
+    a[cnt] = A.point(base);
+    b[cnt] = B.point(PI + base);
+    cnt++;
+  }
+  else if(dcmp(d2 - rsum*rsum) > 0){ // two internal common tangents
+    double ang = acos((A.r+B.r) / sqrt(d2));
+    a[cnt] = A.point(base+ang);
+    b[cnt] = B.point(PI+base+ang);
+    cnt++;
+    a[cnt] = A.point(base-ang);
+    b[cnt] = B.point(PI+base-ang);
+    cnt++;
+  }
+  return cnt;
+}
+\end{lstlisting}
+
+\newpage
 \section{String Processing}
 \subsection{KMP}
 \begin{lstlisting}
