@@ -301,6 +301,8 @@ private:
 const int maxnode = 4000 * 100 + 10;
 const int sigma_size = 26;
 
+// This template use unnecessary large memory.
+// should replace ch[maxnode][sigma_size] by vector<node>.
 struct Trie {
   int ch[maxnode][sigma_size];
   int val[maxnode];
@@ -847,7 +849,7 @@ Vector Rotate(Vector A, double rad){
   return Vector(A.x*cos(rad)-A.y*sin(rad), A.x*sin(rad)+A.y*cos(rad));
 }
 
-// unit normal vector for A（left rotate pi/2） A != 0
+// unit normal vector for A (left rotate pi/2)  A != 0
 Vector Normal(Vector A){
   double L = Length(A);
   return Vector(-A.y/L, A.x/L);
@@ -986,9 +988,9 @@ struct Line{
   Line(Point p, Vector v):p(p),v(v){}
   Point point(double t) {
       return p + v*t;
-    }
-    Line move(double d) {
-      return Line(p + Normal(v)*d, v);
+  }
+  Line move(double d) {
+    return Line(p + Normal(v)*d, v);
   }
 };
 
