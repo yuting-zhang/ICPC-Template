@@ -1333,7 +1333,7 @@ ii LCS() {       // returns a pair (the LCS length and its index)
 }
 \end{lstlisting}
 
-\subsection{FFT}
+\section{FFT}
 \begin{lstlisting}
 const long double PI = acos(0.0) * 2.0;
 
@@ -1356,7 +1356,8 @@ inline void FFT(vector<CD> &a, bool inverse) {
     // 把每相邻两个“step点DFT”通过一系列蝴蝶操作合并为一个“2*step点DFT”
     double alpha = pi / step;
     // 为求高效，我们并不是依次执行各个完整的DFT合并，而是枚举下标k
-    // 对于一个下标k，执行所有DFT合并中该下标对应的蝴蝶操作，即通过E[k]和O[k]计算X[k]
+    // 对于一个下标k，执行所有DFT合并中该下标对应的蝴蝶操作，
+    即通过E[k]和O[k]计算X[k]
     // 蝴蝶操作参考：http://en.wikipedia.org/wiki/Butterfly_diagram
     for(int k = 0; k < step; k++) {
       // 计算omega^k. 这个方法效率低，但如果用每次乘omega的方法递推会有精度问题。
