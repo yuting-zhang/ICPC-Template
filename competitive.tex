@@ -1,4 +1,6 @@
-\documentclass[letterpaper]{article}
+\documentclass[10pt,landscape]{article}
+\usepackage{multicol}
+\usepackage{xeCJK}
 \usepackage{listings}
 \usepackage{color}
 \usepackage[left=1.2in,right=1.2in,top=1.2in,bottom=1.2in]{geometry}
@@ -29,6 +31,7 @@
 \author{Yuting Zhang}
 
 \begin{document}
+\begin{multicols}{2}
 \maketitle
 \thispagestyle{empty}
 \newpage
@@ -1276,44 +1279,44 @@ void computeLCP_slow() {
 
 void computeLCP() {
   int i, L;
-  Phi[SA[0]] = -1;                                         // default value
-  for (i = 1; i < n; i++)                            // compute Phi in O(n)
+  Phi[SA[0]] = -1;                        // default value
+  for (i = 1; i < n; i++)                 // compute Phi in O(n)
     Phi[SA[i]] = SA[i-1];    // remember which suffix is behind this suffix
   for (i = L = 0; i < n; i++) {             // compute Permuted LCP in O(n)
-    if (Phi[i] == -1) { PLCP[i] = 0; continue; }            // special case
-    while (T[i + L] == T[Phi[i] + L]) L++;       // L increased max n times
+    if (Phi[i] == -1) { PLCP[i] = 0; continue; }  // special case
+    while (T[i + L] == T[Phi[i] + L]) L++; // L increased max n times
     PLCP[i] = L;
-    L = max(L-1, 0);                             // L decreased max n times
+    L = max(L-1, 0);               // L decreased max n times
   }
-  for (i = 0; i < n; i++)                            // compute LCP in O(n)
+  for (i = 0; i < n; i++)         // compute LCP in O(n)
     LCP[i] = PLCP[SA[i]];   // put the permuted LCP to the correct position
 }
 
-ii stringMatching() {                      // string matching in O(m log n)
-  int lo = 0, hi = n-1, mid = lo;              // valid matching = [0..n-1]
-  while (lo < hi) {                                     // find lower bound
-    mid = (lo + hi) / 2;                              // this is round down
+ii stringMatching() {        // string matching in O(m log n)
+  int lo = 0, hi = n-1, mid = lo;    // valid matching = [0..n-1]
+  while (lo < hi) {                    // find lower bound
+    mid = (lo + hi) / 2;            // this is round down
     int res = strncmp(T + SA[mid], P, m);  // try to find P in suffix 'mid'
     if (res >= 0) hi = mid;        // prune upper half (notice the >= sign)
-    else          lo = mid + 1;           // prune lower half including mid
-  }                                      // observe '=' in "res >= 0" above
+    else          lo = mid + 1; // prune lower half including mid
+  }                          // observe '=' in "res >= 0" above
   if (strncmp(T + SA[lo], P, m) != 0) return ii(-1, -1);    // if not found
   ii ans; ans.first = lo;
   lo = 0; hi = n - 1; mid = lo;
-  while (lo < hi) {            // if lower bound is found, find upper bound
+  while (lo < hi) {       // if lower bound is found, find upper bound
     mid = (lo + hi) / 2;
     int res = strncmp(T + SA[mid], P, m);
-    if (res > 0) hi = mid;                              // prune upper half
-    else         lo = mid + 1;            // prune lower half including mid
-  }                           // (notice the selected branch when res == 0)
-  if (strncmp(T + SA[hi], P, m) != 0) hi--;                 // special case
+    if (res > 0) hi = mid;          // prune upper half
+    else         lo = mid + 1;       // prune lower half including mid
+  }       // (notice the selected branch when res == 0)
+  if (strncmp(T + SA[hi], P, m) != 0) hi--;       // special case
   ans.second = hi;
   return ans;
 } // return lower/upperbound as first/second item of the pair, respectively
 
-ii LRS() {                 // returns a pair (the LRS length and its index)
+ii LRS() {       // returns a pair (the LRS length and its index)
   int i, idx = 0, maxLCP = -1;
-  for (i = 1; i < n; i++)                         // O(n), start from i = 1
+  for (i = 1; i < n; i++)   // O(n), start from i = 1
     if (LCP[i] > maxLCP)
       maxLCP = LCP[i], idx = i;
   return ii(maxLCP, idx);
@@ -1321,36 +1324,73 @@ ii LRS() {                 // returns a pair (the LRS length and its index)
 
 int owner(int idx) { return (idx < n-m-1) ? 1 : 2; }
 
-ii LCS() {                 // returns a pair (the LCS length and its index)
+ii LCS() {       // returns a pair (the LCS length and its index)
   int i, idx = 0, maxLCP = -1;
-  for (i = 1; i < n; i++)                         // O(n), start from i = 1
+  for (i = 1; i < n; i++)          // O(n), start from i = 1
     if (owner(SA[i]) != owner(SA[i-1]) && LCP[i] > maxLCP)
       maxLCP = LCP[i], idx = i;
   return ii(maxLCP, idx);
 }
 \end{lstlisting}
 
-\newpage
-\section{Config Files}
-\subsection{.vimrc}
+\subsection{FFT}
 \begin{lstlisting}
-set number
-set autoindent
-set expandtab
-set tabstop=4
-set softtabstop=4
-set shiftwidth=4
-set cursorline
-set clipboard=unnamedplus
-set cc=100
-set ruler
-set spell
-\end{lstlisting}
+const long double PI = acos(0.0) * 2.0;
 
-\subsection{.bash\_profile}
-\begin{lstlisting}
-alias vim="gvim -v"
-\end{lstlisting}
+typedef complex<double> CD;
 
+
+// Cooley-Tukey的FFT算法，迭代实现。inverse = false时计算逆FFT
+inline void FFT(vector<CD> &a, bool inverse) {
+  int n = a.size();
+  // 原地快速bit reversal
+  for(int i = 0, j = 0; i < n; i++) {
+    if(j > i) swap(a[i], a[j]);
+    int k = n;
+    while(j & (k >>= 1)) j &= ~k;
+    j |= k;
+  }
+
+  double pi = inverse ? -PI : PI;
+  for(int step = 1; step < n; step <<= 1) {
+    // 把每相邻两个“step点DFT”通过一系列蝴蝶操作合并为一个“2*step点DFT”
+    double alpha = pi / step;
+    // 为求高效，我们并不是依次执行各个完整的DFT合并，而是枚举下标k
+    // 对于一个下标k，执行所有DFT合并中该下标对应的蝴蝶操作，即通过E[k]和O[k]计算X[k]
+    // 蝴蝶操作参考：http://en.wikipedia.org/wiki/Butterfly_diagram
+    for(int k = 0; k < step; k++) {
+      // 计算omega^k. 这个方法效率低，但如果用每次乘omega的方法递推会有精度问题。
+      // 有更快更精确的递推方法，为了清晰起见这里略去
+      CD omegak = exp(CD(0, alpha*k)); 
+      for(int Ek = k; Ek < n; Ek += step << 1) { // Ek是某次DFT合并中E[k]在原始序列中的下标
+        int Ok = Ek + step; // Ok是该DFT合并中O[k]在原始序列中的下标
+        CD t = omegak * a[Ok]; // 蝴蝶操作：x1 * omega^k
+        a[Ok] = a[Ek] - t;  // 蝴蝶操作：y1 = x0 - t
+        a[Ek] += t;         // 蝴蝶操作：y0 = x0 + t
+      }
+    }
+  }
+
+  if(inverse)
+    for(int i = 0; i < n; i++) a[i] /= n;
+}
+
+// 用FFT实现的快速多项式乘法
+inline vector<double> operator * (const vector<double>& v1, const vector<double>& v2) {
+  int s1 = v1.size(), s2 = v2.size(), S = 2;
+  while(S < s1 + s2) S <<= 1;
+  vector<CD> a(S,0), b(S,0); // 把FFT的输入长度补成2的幂，不小于v1和v2的长度之和
+  for(int i = 0; i < s1; i++) a[i] = v1[i];
+  FFT(a, false);
+  for(int i = 0; i < s2; i++) b[i] = v2[i];
+  FFT(b, false);
+  for(int i = 0; i < S; i++) a[i] *= b[i];
+  FFT(a, true);
+  vector<double> res(s1 + s2 - 1);
+  for(int i = 0; i < s1 + s2 - 1; i++) res[i] = a[i].real(); // 虚部均为0
+  return res;
+}
+\end{lstlisting}
+\end{multicols}
 \end{document}
 
