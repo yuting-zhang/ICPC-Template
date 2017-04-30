@@ -747,7 +747,7 @@ int main() {
 }
 \end{lstlisting}
 
-\section{Number Theory}
+\section{Math}
 \subsection{Sieve of Eratosthenes}
 \begin{lstlisting}
 #define BOUND 1000000
@@ -795,6 +795,123 @@ vi primeFactors(ll N) {   // remember: vi is vector of integers, ll is long long
 }
 \end{lstlisting}
 
+\subsection{Extended Euclid}
+\begin{lstlisting}
+long long x, y, d;
+
+void extended_Euclid(long long a, long long b) {
+    if (b == 0) { x = 1; y = 0; d = a; return;}
+    extended_Euclid(b, a % b);
+    long long x1 = y, y1 = x - (a / b) * y;
+    x = x1;
+    y = y1;
+}
+
+// Gives ax0 + by0 = d.
+// x = x0 + (b/d)n, y = y0 - (a/d)n.
+extended_Euclid(a, b);
+
+\end{lstlisting}
+
+\subsection{Euler Phi function}
+\begin{lstlisting}
+int euler_phi(int n){
+  int m = (int)sqrt(n+0.5);
+  int ans = n;
+  for(int i=2;i<=m;i++)
+    if(n%i==0){
+      ans = ans/i*(i-1);
+      while(n%i==0)
+        n /= i;
+    }
+  if(n>1)
+    ans = ans/n*(n-1);
+  return ans;
+}
+
+void euler_phi_table(int n, int *phi){
+  for(int i=2;i<=n;i++)
+    phi[i] = 0;
+  phi[1] = 1;
+  for(int i=2;i<=n;i++)
+    if(!phi[i])
+      for(int j=i;j<=n;j+=i){
+        if(!phi[j])
+          phi[j] = j;
+        phi[j] = phi[j]/i*(i-1);
+      }
+}
+\end{lstlisting}
+
+\subsection{GCD mod related (CRT)}
+
+\begin{lstlisting}
+// ax+by = gcd(a, b), minimize abs(x)+abs(y) x, y may be negative
+void gcd(LL a, LL b, LL & d, LL & x, LL & y) {
+  if(!b) { d = a; x = 1; y = 0; }
+  else { 
+    gcd(b, a%b, d, y, x); 
+    y -= x*(a/b); 
+  }
+}
+
+// calculate inv(a) mod n. If not exist, return -1
+LL inv(LL a, LL n) {
+  LL d, x, y;
+  gcd(a, n, d, x, y);
+  return d == 1 ? (x+n)%n : -1;
+}
+
+// n functions: x=a[i] (mod m[i]) m[i] co-prime
+LL CRT(int n, int * a, int * m) {
+  LL M = 1, d, y, x = 0;
+  for(int i=0;i<n;i++)
+    M *= m[i];
+  for(int i=0;i<n;i++) {
+    LL w = M / m[i];
+    gcd(m[i], w, d, d, y);
+    x = (x + y*w*a[i]) % M;
+  }
+  return (x+M)%M;
+}
+
+// return ab mod n. 0<=a,b<n
+LL mul_mod(LL a, LL b, int n) {
+  return a * b % n;
+}
+
+// return a^p mod n, 0<=a<n
+LL pow_mod(LL a, LL p, LL n) {
+  if(p == 0)
+    return 1;
+  LL ans = pow_mod(a, p/2, n);
+  ans = ans * ans % n;
+  if(p % 2 == 1)
+    ans = ans * a % n;
+  return ans;
+}
+
+// solve a^x=b mod n. n prime. If no solution, return -1
+int log_mod(int a, int b, int n) {
+  int m, v, e = 1;
+  m = (int)sqrt(n+0.5);
+  v = inv(pow_mod(a, m, n), n);
+  map<int, int> x;
+  x[1] = 0;
+  for(int i=1;i<m;i++) {
+    e = mul_mod(e, a, n);
+    if(!x.count(e))
+      x[e] = i;
+  }
+  for(int i=0;i<m;i++) {
+    if(x.count(b))
+      return i*m + x[b];
+    b = mul_mod(b, v, n);
+  }
+  return -1;
+}
+\end{lstlisting}
+
 \subsection{Matrix}
 \begin{lstlisting}
 #define MAX_N 2                                  // increase this if needed
@@ -834,23 +951,203 @@ Cat(n + 1) = \frac{(2n + 2) \times (2n + 1)}{(n + 2) \times (n + 1)}
 \subsection{Schr\"oder-Hipparchus Number}
 \(S(n) = \frac{1}{n}((6n - 9)S(n - 1) - (n - 3)S(n - 2)) \)
 
-\subsection{Extended Euclid}
+\subsection{Enumerate Combination}
 \begin{lstlisting}
-long long x, y, d;
+const int maxn = 1000;
 
-void extended_Euclid(long long a, long long b) {
-    if (b == 0) { x = 1; y = 0; d = a; return;}
-    extended_Euclid(b, a % b);
-    long long x1 = y, y1 = x - (a / b) * y;
-    x = x1;
-    y = y1;
+int com[maxn];
+
+bool next_Com(int num, int k){ //0,1...num-1 choose k
+  if(k == 0)
+    return false;
+  if(com[k-1]!=num-1){
+    com[k-1]++;
+    return true;
+  }
+  int i;
+  for(i=k-1;i>=0;i--)
+    if(com[i]!=num-k+i)
+      break;
+  if(i==-1)
+    return false;
+  com[i]++;
+  for(int j=i+1;j<k;j++)
+    com[j] = com[i]+(j-i);
+  return true;
 }
 
-// Gives ax0 + by0 = d.
-// x = x0 + (b/d)n, y = y0 - (a/d)n.
-extended_Euclid(a, b);
-
+void makeFirstCom(int k){
+  for(int i=0;i<k;i++)
+    com[i] = i;
+}
 \end{lstlisting}
+
+\subsection{Gauss Elimination}
+\begin{lstlisting}
+const int maxn = 110;
+typedef double Matrix[maxn][maxn];
+
+// require matrix A invertible
+// A is augmented matrix, A[i][n] = bi
+// After execution, A[i][n] is the value of i-th variable
+void gauss_elimination(Matrix A, int n) {
+  int i, j, k, r;
+  for (i=0; i<n; i++) {
+    r = i;
+    for (j=i+1; j<n; j++) {
+      if (fabs(A[j][i]) > fabs(A[r][i]))
+        r = j;
+    }
+    if (r != i)
+      for (j=0; j<=n; j++)
+        swap(A[r][j], A[i][j]);
+    for (j=n; j>=i; j--) 
+      for (k=i+1; k<n; ++k)
+        A[k][j] -= A[k][i] / A[i][i] * A[i][j];
+  }
+  for (i=n-1; i>=0; i--) {
+    for (j=i+1; j<n; j++)
+      A[i][n] -= A[j][n] * A[i][j];
+    A[i][n] /= A[i][i];
+  }
+}
+\end{lstlisting}
+
+\subsection{FFT}
+\begin{lstlisting}
+const long double PI = acos(0.0) * 2.0;
+
+typedef complex<double> CD;
+
+
+// Cooley-Tukey的FFT算法，迭代实现。inverse = false时计算逆FFT
+inline void FFT(vector<CD> &a, bool inverse) {
+  int n = a.size();
+  // 原地快速bit reversal
+  for(int i = 0, j = 0; i < n; i++) {
+    if(j > i) swap(a[i], a[j]);
+    int k = n;
+    while(j & (k >>= 1)) j &= ~k;
+    j |= k;
+  }
+
+  double pi = inverse ? -PI : PI;
+  for(int step = 1; step < n; step <<= 1) {
+    // 把每相邻两个“step点DFT”通过一系列蝴蝶操作合并为一个“2*step点DFT”
+    double alpha = pi / step;
+    // 为求高效，我们并不是依次执行各个完整的DFT合并，而是枚举下标k
+    // 对于一个下标k，执行所有DFT合并中该下标对应的蝴蝶操作，
+    即通过E[k]和O[k]计算X[k]
+    // 蝴蝶操作参考：http://en.wikipedia.org/wiki/Butterfly_diagram
+    for(int k = 0; k < step; k++) {
+      // 计算omega^k. 这个方法效率低，但如果用每次乘omega的方法递推会有精度问题。
+      // 有更快更精确的递推方法，为了清晰起见这里略去
+      CD omegak = exp(CD(0, alpha*k)); 
+      for(int Ek = k; Ek < n; Ek += step << 1) { // Ek是某次DFT合并中E[k]在原始序列中的下标
+        int Ok = Ek + step; // Ok是该DFT合并中O[k]在原始序列中的下标
+        CD t = omegak * a[Ok]; // 蝴蝶操作：x1 * omega^k
+        a[Ok] = a[Ek] - t;  // 蝴蝶操作：y1 = x0 - t
+        a[Ek] += t;         // 蝴蝶操作：y0 = x0 + t
+      }
+    }
+  }
+
+  if(inverse)
+    for(int i = 0; i < n; i++) a[i] /= n;
+}
+
+// 用FFT实现的快速多项式乘法
+inline vector<double> operator * (const vector<double>& v1, const vector<double>& v2) {
+  int s1 = v1.size(), s2 = v2.size(), S = 2;
+  while(S < s1 + s2) S <<= 1;
+  vector<CD> a(S,0), b(S,0); // 把FFT的输入长度补成2的幂，不小于v1和v2的长度之和
+  for(int i = 0; i < s1; i++) a[i] = v1[i];
+  FFT(a, false);
+  for(int i = 0; i < s2; i++) b[i] = v2[i];
+  FFT(b, false);
+  for(int i = 0; i < S; i++) a[i] *= b[i];
+  FFT(a, true);
+  vector<double> res(s1 + s2 - 1);
+  for(int i = 0; i < s1 + s2 - 1; i++) res[i] = a[i].real(); // 虚部均为0
+  return res;
+}
+\end{lstlisting}
+
+\subsection{Simplex}
+\begin{lstlisting}
+// 参考：http://en.wikipedia.org/wiki/Simplex_algorithm
+// 输入矩阵a描述线性规划的标准形式。a为m+1行n+1列，其中行0~m-1为不等式，行m为目标函数（最大化）。列0~n-1为变量0~n-1的系数，列n为常数项
+// 第i个约束为a[i][0]*x[0] + a[i][1]*x[1] + ... <= a[i][n]
+// 目标为max(a[m][0]*x[0] + a[m][1]*x[1] + ... + a[m][n-1]*x[n-1] - a[m][n])
+// 注意：变量均有非负约束x[i] >= 0
+const int maxm = 500; // 约束数目上限
+const int maxn = 500; // 变量数目上限
+const double INF = 1e100;
+const double eps = 1e-10;
+
+struct Simplex {
+  int n; // 变量个数
+  int m; // 约束个数
+  double a[maxm][maxn]; // 输入矩阵
+  int B[maxm], N[maxn]; // 算法辅助变量
+
+  void pivot(int r, int c) {
+    swap(N[c], B[r]);
+    a[r][c] = 1 / a[r][c];
+    for(int j = 0; j <= n; j++) if(j != c) a[r][j] *= a[r][c];
+    for(int i = 0; i <= m; i++) if(i != r) {
+      for(int j = 0; j <= n; j++) if(j != c) a[i][j] -= a[i][c] * a[r][j];
+      a[i][c] = -a[i][c] * a[r][c];
+    }
+  }
+
+  bool feasible() {
+    for(;;) {
+      int r, c;
+      double p = INF;
+      for(int i = 0; i < m; i++) if(a[i][n] < p) p = a[r = i][n];
+      if(p > -eps) return true;
+      p = 0;
+      for(int i = 0; i < n; i++) if(a[r][i] < p) p = a[r][c = i];
+      if(p > -eps) return false;
+      p = a[r][n] / a[r][c];
+      for(int i = r+1; i < m; i++) if(a[i][c] > eps) {
+        double v = a[i][n] / a[i][c];
+        if(v < p) { r = i; p = v; }
+      }
+      pivot(r, c);
+    }
+  }
+
+  // 解有界返回1，无解返回0，无界返回-1。b[i]为x[i]的值，ret为目标函数的值
+  int simplex(int n, int m, double x[maxn], double& ret) {
+    this->n = n;
+    this->m = m;
+    for(int i = 0; i < n; i++) N[i] = i;
+    for(int i = 0; i < m; i++) B[i] = n+i;
+    if(!feasible()) return 0;
+    for(;;) {
+      int r, c;
+      double p = 0;
+      for(int i = 0; i < n; i++) if(a[m][i] > p) p = a[m][c = i];
+      if(p < eps) {
+        for(int i = 0; i < n; i++) if(N[i] < n) x[N[i]] = 0;
+        for(int i = 0; i < m; i++) if(B[i] < n) x[B[i]] = a[i][n];
+        ret = -a[m][n];
+        return 1;
+      }
+      p = INF;
+      for(int i = 0; i < m; i++) if(a[i][c] > eps) {
+        double v = a[i][n] / a[i][c];
+        if(v < p) { r = i; p = v; }
+      }
+      if(p == INF) return -1;
+      pivot(r, c);
+    }
+  }
+};
+\end{lstlisting}
+
 \newpage
 
 \section{Computational Geometry}
@@ -1333,65 +1630,6 @@ ii LCS() {       // returns a pair (the LCS length and its index)
 }
 \end{lstlisting}
 
-\section{FFT}
-\begin{lstlisting}
-const long double PI = acos(0.0) * 2.0;
-
-typedef complex<double> CD;
-
-
-// Cooley-Tukey的FFT算法，迭代实现。inverse = false时计算逆FFT
-inline void FFT(vector<CD> &a, bool inverse) {
-  int n = a.size();
-  // 原地快速bit reversal
-  for(int i = 0, j = 0; i < n; i++) {
-    if(j > i) swap(a[i], a[j]);
-    int k = n;
-    while(j & (k >>= 1)) j &= ~k;
-    j |= k;
-  }
-
-  double pi = inverse ? -PI : PI;
-  for(int step = 1; step < n; step <<= 1) {
-    // 把每相邻两个“step点DFT”通过一系列蝴蝶操作合并为一个“2*step点DFT”
-    double alpha = pi / step;
-    // 为求高效，我们并不是依次执行各个完整的DFT合并，而是枚举下标k
-    // 对于一个下标k，执行所有DFT合并中该下标对应的蝴蝶操作，
-    即通过E[k]和O[k]计算X[k]
-    // 蝴蝶操作参考：http://en.wikipedia.org/wiki/Butterfly_diagram
-    for(int k = 0; k < step; k++) {
-      // 计算omega^k. 这个方法效率低，但如果用每次乘omega的方法递推会有精度问题。
-      // 有更快更精确的递推方法，为了清晰起见这里略去
-      CD omegak = exp(CD(0, alpha*k)); 
-      for(int Ek = k; Ek < n; Ek += step << 1) { // Ek是某次DFT合并中E[k]在原始序列中的下标
-        int Ok = Ek + step; // Ok是该DFT合并中O[k]在原始序列中的下标
-        CD t = omegak * a[Ok]; // 蝴蝶操作：x1 * omega^k
-        a[Ok] = a[Ek] - t;  // 蝴蝶操作：y1 = x0 - t
-        a[Ek] += t;         // 蝴蝶操作：y0 = x0 + t
-      }
-    }
-  }
-
-  if(inverse)
-    for(int i = 0; i < n; i++) a[i] /= n;
-}
-
-// 用FFT实现的快速多项式乘法
-inline vector<double> operator * (const vector<double>& v1, const vector<double>& v2) {
-  int s1 = v1.size(), s2 = v2.size(), S = 2;
-  while(S < s1 + s2) S <<= 1;
-  vector<CD> a(S,0), b(S,0); // 把FFT的输入长度补成2的幂，不小于v1和v2的长度之和
-  for(int i = 0; i < s1; i++) a[i] = v1[i];
-  FFT(a, false);
-  for(int i = 0; i < s2; i++) b[i] = v2[i];
-  FFT(b, false);
-  for(int i = 0; i < S; i++) a[i] *= b[i];
-  FFT(a, true);
-  vector<double> res(s1 + s2 - 1);
-  for(int i = 0; i < s1 + s2 - 1; i++) res[i] = a[i].real(); // 虚部均为0
-  return res;
-}
-\end{lstlisting}
 \end{multicols}
 \end{document}
 
