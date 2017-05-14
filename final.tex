@@ -248,6 +248,136 @@ struct treap{
     }};
 \end{lstlisting}
 
+\subsection{Splay}
+\begin{lstlisting}
+const int maxNodeCnt = 111111;
+int nodeCnt, root, type[maxNodeCnt], parent[maxNodeCnt], childs[maxNodeCnt][2],
+    size[maxNodeCnt], stack[maxNodeCnt], reversed[maxNodeCnt];
+// ...
+void clear() {
+    root = 0;
+    size[0] = 0;
+    nodeCnt = 1;
+}
+int malloc() {
+    type[nodeCnt] = 2;
+    childs[nodeCnt][0] = childs[nodeCnt][1] = 0;
+    size[nodeCnt] = 1;
+    reversed[nodeCnt] = 0;
+    return nodeCnt ++;
+}
+void update(int x) {
+    size[x] = size[childs[x][0]] + 1 + size[childs[x][1]];
+    // ...
+}
+void pass(int x) {
+    // NOTICE: childs[x][i] == 0
+    if (reversed[x]) {
+        swap(childs[x][0], childs[x][1]);
+        type[childs[x][0]] = 0;
+        reversed[childs[x][0]] ^= 1;
+        type[childs[x][1]] = 1;
+        107reversed[childs[x][1]] ^= 1;
+        reversed[x] = 0;
+    }
+    // ...
+}
+void rotate(int x) {
+    int t = type[x],
+    y = parent[x],
+    z = childs[x][1 - t];
+    type[x] = type[y];
+    parent[x] = parent[y];
+    if (type[x] != 2) {
+        childs[parent[x]][type[x]] = x;
+    }
+    type[y] = 1 - t;
+    parent[y] = x;
+    childs[x][1 - t] = y;
+    if (z) {
+        type[z] = t;
+        parent[z] = y;
+    }
+    childs[y][t] = z;
+    update(y);
+}
+void splay(int x) {
+    int stackCnt = 0;
+    stack[stackCnt ++] = x;
+    for (int i = x; type[i] != 2; i = parent[i]) {
+        stack[stackCnt ++] = parent[i];
+    }
+    for (int i = stackCnt - 1; i > -1; -- i) {
+        pass(stack[i]);
+    }
+    while (type[x] != 2) {
+        int y = parent[x];
+        if (type[x] == type[y]) {
+            rotate(y);
+        } else {
+            rotate(x);
+        }
+        if (type[x] == 2) {
+            break;
+            108}
+        rotate(x);
+    }
+    update(x);
+}
+int find(int x, int rank) {
+    while (true) {
+        pass(x);
+        if (size[childs[x][0]] + 1 == rank) {
+            break;
+        }
+        if (rank <= size[childs[x][0]]) {
+            x = childs[x][0];
+        } else {
+            rank -= size[childs[x][0]] + 1;
+            x = childs[x][1];
+        }
+    }
+    return x;
+}
+void split(int &x, int &y, int a) {
+    // NOTICE: x, y != 0
+    y = find(x, a + 1);
+    splay(y);
+    x = childs[y][0];
+    type[x] = 2;
+    childs[y][0] = 0;
+    update(y);
+}
+void split3(int &x, int &y, int &z, int a, int b) {
+    split(x, z, b);
+    split(x, y, a - 1);
+}
+void join(int &x, int y) {
+    // NOTICE x, y != 0
+    x = find(x, size[x]);
+    splay(x);
+    childs[x][1] = y;
+    type[y] = 1;
+    parent[y] = x;
+    109update(x);
+}
+void join3(int &x, int y, int z) {
+    join(y, z);
+    join(x, y);
+}
+int getRank(int x) {
+    splay(x);
+    root = x;
+    return size[childs[x][0]];
+}
+void reverse(int a, int b) {
+    int x, y;
+    split3(root, x, y, a + 1, b + 1);
+    reversed[x] ^= 1;
+    join3(root, x, y);
+}
+\end{lstlisting}
+
 \subsection{Trie}
 \begin{lstlisting}
 const int maxnode = 4000 * 100 + 10;
@@ -625,6 +755,82 @@ int main() {
     }
     printf("%d\n", matching);
     return 0;
+}
+\end{lstlisting}
+
+\subsection{Min-Cost Flow}
+\begin{lstlisting}
+const int inf = 1000000000;
+int s, t, node, totalCost;
+vector<int> head, dist, vtx, next, c, cost;
+vector<bool> vis;
+void resize(vector<T> &a, int size, T init) //设大小、初始值
+void init(int source, int target, int nodeCount) //初始化，记得清空 
+void add(int a,int b,int cc,int cst) //双向加边
+void spfa() {
+	resize(vis, node, false); resize(dist, node, -inf);
+	queue<int> q; q.push(t); vis[t]=true; dist[t]=0;
+	while (q.size()) {
+		int u = q.front();  	q.pop();
+		vis[u] = false;
+		for (int p = head[u]; p != -1; p = next[p]) {
+			if (c[p ^ 1] && dist[u] + cost[p ^ 1] > dist[vtx[p]]) {
+				dist[vtx[p]] = dist[u] + cost[p ^ 1];
+				if (!vis[vtx[p]]) {
+					vis[vtx[p]] = true; 	q.push(vtx[p]);
+					if (dist[q.back()] < dist[q.front()]) {
+						swap(q.front(), q.back());
+}}}}}}
+int dfs(int u, int limit) {
+	if (u == t) {
+		totalCost += limit * dist[s];
+		return limit;
+	}
+	int current = 0;
+	vis[u] = true;
+	for (int p = head[u]; p != -1; p = next[p]) {
+		if (c[p] && !vis[vtx[p]] && dist[vtx[p]] + cost[p] == dist[u]) {
+			int delta = dfs(vtx[p], min(limit - current, c[p]));
+			c[p] -= delta;	c[p ^ 1] += delta;
+			current += delta;
+			if (current == limit) {
+				break;
+			}
+		}
+	}
+	return current;
+}
+inline bool adjust() {
+	int maxi = -inf;
+	for (int i = 0; i < node; ++ i) {
+		if (vis[i]) {
+			for (int p = head[i]; p != -1; p = next[p]) {
+				if (c[p] && !vis[vtx[p]]) {
+					assert(dist[vtx[p]] + cost[p] != dist[i]);
+					maxi = max(maxi, dist[vtx[p]] + cost[p] - dist[i]);
+				}
+			}
+		}
+	}
+	if (maxi == -inf) {
+		return false;
+	}
+	for (int i = 0; i < node; ++ i) {
+		if (vis[i]) {
+			dist[i] += maxi;
+		}
+	}
+	return true;
+}
+int maxCostFlow() {
+	spfa();
+	totalCost = 0;
+	do{
+		do{
+			resize(vis, node, false);
+		}while (dfs(s, inf));
+	}while (adjust());
+	return totalCost;
 }
 \end{lstlisting}
 
@@ -1213,6 +1419,49 @@ double area(const point &o) {
 
 \end{lstlisting}
 
+\begin{lstlisting}
+随机增量最小覆盖圆
+const double eps=1e-7;
+const int maxn=100000;
+class circle{
+    point o;
+    double r;
+}
+point a[maxn];
+int n;
+circle ans;
+double area(point a, point b, point c){
+    return ((b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x));
+}
+double dis(point a, point b){
+    return (a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y);
+}
+void init(){
+    int i,j,k;
+    scanf("%d",&n);
+    rep(i,n) scanf("%lf%lf",&a[i].x,&a[i].y);
+}
+bool check(const point &a){
+    return sqr(a.x-ans.o.x) + sqr(a.y-ans.o.y) <= ans.r + zero;
+}
+void Mincircle(){
+    int i,j,k;
+    ans.r=0; ans.x=0; ans.y=0;
+    rep(i,n) if (!check(a[i])) {
+        ans.o=a[i]; ans.r=0;
+        rep(j,i) if (!check(a[j])) {
+            CircleCenter(a[i],a[j],ans.o);
+            28ans.r=dis(ans.o,a[i]);
+            rep(k,j) if (!check(a[k])) {
+                CircleCenter(a[i],a[j],a[k],ans.o);
+                ans.r=dis(ans.o,a[i]);
+            }
+        }
+    }
+    printf("%.4lf\n",sqrt(ans.r));
+}
+\end{lstlisting}
+
 \section{String Processing}
 \subsection{KMP}
 \begin{lstlisting}
@@ -1242,17 +1491,17 @@ void kmpSearch() { // this is similar as kmpPreprocess(), but on string T
 
 \subsection{Suffix Array}
 \begin{lstlisting}
-#define MAX_N 100010                         // second approach: O(n log n)
-char T[MAX_N];                   // the input string, up to 100K characters
-int n;                                        // the length of input string
-int RA[MAX_N], tempRA[MAX_N];        // rank array and temporary rank array
-int SA[MAX_N], tempSA[MAX_N];    // suffix array and temporary suffix array
-int c[MAX_N];                                    // for counting/radix sort
+#define MAX_N 100010          // second approach: O(n log n)
+char T[MAX_N];         // the input string, up to 100K characters
+int n;                              // the length of input string
+int RA[MAX_N], tempRA[MAX_N]; // rank array and temporary rank array
+int SA[MAX_N], tempSA[MAX_N];  // suffix array and temporary suffix array
+int c[MAX_N];                      // for counting/radix sort
 
-char P[MAX_N];                  // the pattern string (for string matching)
-int m;                                      // the length of pattern string
+char P[MAX_N];        // the pattern string (for string matching)
+int m;               // the length of pattern string
 
-int Phi[MAX_N];                      // for computing longest common prefix
+int Phi[MAX_N];       // for computing longest common prefix
 int PLCP[MAX_N];
 int LCP[MAX_N];  // LCP[i] stores the LCP between previous suffix T+SA[i-1]
                                               // and current suffix T+SA[i]
@@ -1295,19 +1544,19 @@ void constructSA() {         // this version can go up to 100000 characters
 } }
 
 void computeLCP_slow() {
-  LCP[0] = 0;                                              // default value
-  for (int i = 1; i < n; i++) {                // compute LCP by definition
-    int L = 0;                                       // always reset L to 0
-    while (T[SA[i] + L] == T[SA[i-1] + L]) L++;      // same L-th char, L++
+  LCP[0] = 0;                                       // default value
+  for (int i = 1; i < n; i++) {          // compute LCP by definition
+    int L = 0;                                 // always reset L to 0
+    while (T[SA[i] + L] == T[SA[i-1] + L]) L++;   // same L-th char, L++
     LCP[i] = L;
 } }
 
 void computeLCP() {
   int i, L;
-  Phi[SA[0]] = -1;                        // default value
-  for (i = 1; i < n; i++)                 // compute Phi in O(n)
+  Phi[SA[0]] = -1;        // default value
+  for (i = 1; i < n; i++)   // compute Phi in O(n)
     Phi[SA[i]] = SA[i-1];    // remember which suffix is behind this suffix
-  for (i = L = 0; i < n; i++) {             // compute Permuted LCP in O(n)
+  for (i = L = 0; i < n; i++) {        // compute Permuted LCP in O(n)
     if (Phi[i] == -1) { PLCP[i] = 0; continue; }  // special case
     while (T[i + L] == T[Phi[i] + L]) L++; // L increased max n times
     PLCP[i] = L;
