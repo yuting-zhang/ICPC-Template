@@ -1467,7 +1467,7 @@ void Mincircle(){
         ans.o=a[i]; ans.r=0;
         rep(j,i) if (!check(a[j])) {
             CircleCenter(a[i],a[j],ans.o);
-            28ans.r=dis(ans.o,a[i]);
+            ans.r=dis(ans.o,a[i]);
             rep(k,j) if (!check(a[k])) {
                 CircleCenter(a[i],a[j],a[k],ans.o);
                 ans.r=dis(ans.o,a[i]);
@@ -1475,6 +1475,58 @@ void Mincircle(){
         }
     }
     printf("%.4lf\n",sqrt(ans.r));
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+半平面交 n^2
+const int maxn=200;
+const double eps=1e-8;
+const int infinite=10000;
+struct point{
+    double x,y;
+    void input(){
+        scanf("%lf%lf",&x,&y);
+    }
+} sol[maxn],tmp[maxn];
+struct Tline{
+    point a,b;
+} line[maxn];
+int n,m;
+void rebuild(point a, point b){
+    int i,t;
+    double k1,k2;
+    sol[m]=sol[0]; t=0;
+    foru(i,1,m){
+        k1=area(a,b,sol[i]);
+        k2=area(a,b,sol[i-1]);
+        if (cmp(k1)*cmp(k2)<0){
+            tmp[t].x=(sol[i].x*k2-sol[i-1].x*k1) / (k2-k1);
+            tmp[t].y=(sol[i].y*k2-sol[i-1].y*k1) / (k2-k1);
+            t++;
+        }
+        if (cmp(area(a,b,sol[i])) >=0){
+            tmp[t]=sol[i];
+            t++;
+        }
+    }
+    m=t;
+    rep(i,m) sol[i]=tmp[i];
+}
+void work(){
+    int i,j,k;
+    double ans;
+    point o;
+    sol[0].x = 0; sol[0].y = 0;
+    sol[1].x = infinite; sol[1].y = 0;
+    sol[2].x = infinite; sol[2].y = infinite;
+    sol[3].x = 0; sol[3].y = infinite;
+    m=4;
+    rep(i,n) rebuild(line[i].a,line[i].b);
+    // 保留直线line[i].a,line[i+1].b
+    左边的点
+        if (m>0) printf("1\n");
+        else printf("0\n");
 }
 \end{lstlisting}
 
@@ -1620,6 +1672,20 @@ ii LCS() {       // returns a pair (the LCS length and its index)
     if (owner(SA[i]) != owner(SA[i-1]) && LCP[i] > maxLCP)
       maxLCP = LCP[i], idx = i;
   return ii(maxLCP, idx);
+}
+\end{lstlisting}
+
+\section{Sundry}
+\subsection{Day of some Date}
+\begin{lstlisting}
+int whatday(int d, int m, int y) { //day month year
+    int ans;
+    if (m == 1 || m == 2) { m += 12; y --; }
+    if ((y < 1752) || (y == 1752 && m < 9)||(y == 1752 && m == 9 && d < 3))
+        ans = (d + 2*m + 3*(m+1)/5 + y + y/4 +5) % 7;
+    else
+        ans = (d + 2*m + 3*(m+1)/5 + y + y/4 - y/100 + y/400)%7;
+    return ans;
 }
 \end{lstlisting}
 
