@@ -425,6 +425,102 @@ struct Trie {
   }};
 \end{lstlisting}
 
+\subsection{Kth Element}
+\begin{lstlisting}
+const int D = 18;
+const int N = 100000;
+int n, value[N], rank[N], order[D][N], pos[D][N];
+long long sum[D][N];
+pair <int, int> backup[N];
+void build (int d, int l, int r) {
+    if (r - l > 1) {
+        int m = (l + r) >> 1,
+            curLeft = l,
+            curRight = m;
+        for (int i = l; i < r; ++ i) {
+            if (rank[order[d][i]] < m) {
+                order[d + 1][curLeft ++] = order[d][i];
+            }else{
+                order[d + 1][curRight ++] = order[d][i];
+            }
+            pos[d][i] = curLeft;
+        }
+        build(d + 1, l, m);
+        build(d + 1, m, r);
+    }
+    sum[d][r - 1] = value[order[d][r - 1]];
+    for (int i = r - 2; i >= l; -- i) {
+        sum[d][i] = value[order[d][i]] + sum[d][i + 1];
+    }
+}
+// [l, r) [a, b) k-th sum
+long long query (int d, int l, int r, int a, int b, int k) {
+    if (k) {
+        if (r - l == 1) {
+            return sum[d][a];
+        }
+        int m = (l + r) >> 1,
+            posBegin = pos[d][a];
+        if (rank[order[d][a]] < m) {
+            posBegin -= 1;
+        }
+        int posEnd = pos[d][b - 1],
+        posCnt = posEnd - posBegin;
+        if (k < posCnt) {
+            return query(d + 1, l, m, posBegin, pos[d][b - 1], k);
+        }
+#define RIGHT(i) m + i + 1 - pos[d][i]
+        int rightBegin = RIGHT(a);
+        if (rank[order[d][a]] >= m) {
+            rightBegin -= 1;
+        }
+        long long result = (posBegin < m? sum[d + 1][posBegin]: 0) - (posEnd <
+                m? sum[d + 1][posEnd]: 0);
+        result += query(d + 1, m, r, rightBegin, RIGHT(b - 1), k - posCnt);
+#undef RIGHT
+        return result;
+    }
+    return 0;
+}
+void clear () {
+    for (int i = 0; i < n; ++ i) {
+        order[0][i] = i;
+    }
+    build(0, 0, n);
+}
+int main(){
+    std::ios::sync_with_stdio(false);
+    int testCount;
+    scanf("%d", &testCount);
+    for(int t = 1; t <= testCount; ++ t){
+        std::cout << "Case #" << t << ":\n";
+        scanf("%d", &n);
+        for(int i = 0; i < n; ++ i){
+            scanf("%d", value + i);
+            backup[i] = std::make_pair(value[i], i);
+        }
+        std::sort(backup, backup + n);
+        for(int i = 0; i < n; ++ i){
+            rank[backup[i].second] = i;
+        }
+        int m;
+        scanf("%d", &m);
+        while(m --){
+            int a, b;
+            scanf("%d%d", &a, &b);
+            b ++;
+            int length = b - a;
+            long long result = sum[0][a] - (b < n? sum[0][b]: 0);
+            result -= query(0, 0, n, a, b, (length + 1) >> 1);
+            result -= query(0, 0, n, a, b, length >> 1);
+            std::cout << result << "\n";
+        }
+        std::cout << "\n";
+    }
+    return 0;
+}
+\end{lstlisting}
+
 \section{Graph Theory}
 \subsection{Articulation Points and Bridges}
 \begin{lstlisting}
@@ -1689,6 +1785,42 @@ int whatday(int d, int m, int y) { //day month year
 }
 \end{lstlisting}
 
+\subsection{Java}
+\begin{lstlisting}
+import java.io.*;
+import java.util.*;
+import java.math.*;
+import static java.lang.Math.*;
+public class main{
+    public static StringTokenizer st;
+    public static DataInputStream in;
+    public static PrintStream out;
+    private static int nextInt() throws Exception{
+        for (;st.countTokens()==0;) st=new StringTokenizer(in.readLine());
+        return Integer.valueOf(st.nextToken());
+    }
+    public static BigInteger getsqrt(BigInteger n){
+        if (n.compareTo(BigInteger.ZERO)<=0) return n;
+        BigInteger x,xx,txx;
+        xx=x=BigInteger.ZERO;
+        for (int t=n.bitLength()/2;t>=0;t--){
+            txx=xx.add(x.shiftLeft(t+1)).add(BigInteger.ONE.shiftLeft(t+t));
+            if (txx.compareTo(n)<=0){
+                x=x.add(BigInteger.ONE.shiftLeft(t));
+                xx=txx;
+            }
+        }
+        return x;
+    }
+    public static void main(String args[]) throws Exception{
+        in=new DataInputStream(System.in);
+        out=new PrintStream(new BufferedOutputStream(System.out));
+        st=new StringTokenizer(in.readLine());
+        out.close();
+    }
+}
+
+\end{lstlisting}
 \end{multicols}
 \end{document}
 
